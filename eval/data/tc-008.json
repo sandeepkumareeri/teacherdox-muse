@@ -1,0 +1,17 @@
+{
+  "id": "tc-008",
+  "type": "photo+voice",
+  "language": "te",
+  "base64Image": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+  "imageMimeType": "image/png",
+  "base64Audio": "T2dnUwACAAAAAAAAAAAA",
+  "audioMimeType": "audio/ogg",
+  "expected": {
+    "topic": "కేరళ చరిత్ర - రాజ్య రూపొచ్చవి",
+    "summary": "కేరళ రాష్ట్ర రూపొచ్చవి మరియు మొదటి కetzungen బోర్డ్ పై టైమ్‌లাইনతో వివరistence",
+    "method": "వ్యాఖ్యానం + టైమ్‌లైన్ + చర్చ",
+    "attendance": "38/42",
+    "homework": "పేజీ 67 ప్రశ్నలు 1-3",
+    "carryForward": "కానوچిప్ భాగాలు அடுத்த ആഴ്ച"
+  }
+}
