@@ -1,0 +1,17 @@
+{
+  "id": "tc-003",
+  "type": "photo+voice",
+  "language": "hi",
+  "base64Image": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+  "imageMimeType": "image/png",
+  "base64Audio": "T2dnUwACAAAAAAAAAAAA",
+  "audioMimeType": "audio/ogg",
+  "expected": {
+    "topic": "प्रकाश संश्लेषण",
+    "summary": "प्रकाश-निर्भर प्रतिक्रियाओं को बोर्ड पर चित्र के साथ समझाया",
+    "method": "व्याख्यान + चित्र",
+    "attendance": "40/44",
+    "homework": "प्रश्न 1-5 पृष्ठ 120",
+    "carryForward": "कैल्विन चक्र कल"
+  }
+}
