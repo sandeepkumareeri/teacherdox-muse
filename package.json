@@ -1,0 +1,27 @@
+{
+  "name": "teacherdox-muse",
+  "version": "1.0.0",
+  "description": "Meta Hackathon: Muse Voice Transcribe + Spark + SAM board detection for TeacherDox",
+  "main": "muse.js",
+  "scripts": {
+    "test": "node eval/run.js",
+    "eval": "node eval/run.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.39.0",
+    "dotenv": "^16.3.0"
+  },
+  "keywords": [
+    "meta",
+    "hackathon",
+    "muse",
+    "sam",
+    "teacher",
+    "education",
+    "ai"
+  ],
+  "license": "MIT"
+}
