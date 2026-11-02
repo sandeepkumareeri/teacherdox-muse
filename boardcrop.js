@@ -10,6 +10,7 @@
 
 const https = require('https');
 const { generate: museGenerate } = require('./muse.js');
+const sharp = require('sharp');
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Config
@@ -128,17 +129,26 @@ async function detectBoard(base64Image, mimeType) {
 
 /**
  * Fallback board detection using simple heuristics.
- * Looks for large rectangular regions with high edge density.
- * This is a placeholder — in production you'd use OpenCV or similar.
+ * Returns center crop as reasonable default for board location.
+ * In production, you'd use OpenCV or similar for actual detection.
  */
-function fallbackDetectBoard(base64Image) {
-  // Without actual image processing, return a reasonable default
-  // In a real implementation, you'd decode the base64, process with sharp/opencv,
-  // find edges, detect rectangles, etc.
+async function fallbackDetectBoard(base64Image) {
   console.warn('[boardcrop] Using fallback board detection (center crop)');
 
+  // Try to get actual image dimensions for better fallback
+  let imgWidth = 1920, imgHeight = 1080; // defaults
+  try {
+    const inputBuffer = Buffer.from(base64Image, 'base64');
+    const metadata = await sharp(inputBuffer).metadata();
+    if (metadata.width && metadata.height) {
+      imgWidth = metadata.width;
+      imgHeight = metadata.height;
+    }
+  } catch {
+    // Use defaults if metadata fails
+  }
+
   // Return center 70% of image as a reasonable guess for board location
-  // The actual dimensions would come from image metadata
   return {
     x: 0.15,
     y: 0.15,
@@ -146,27 +156,78 @@ function fallbackDetectBoard(base64Image) {
     height: 0.7,
     confidence: 0.3,
     fallback: true,
+    imageDimensions: { width: imgWidth, height: imgHeight },
   };
 }
 
 /**
- * Crop image to board region.
+ * Crop image to board region using sharp.
  * @param {string} base64Image - Base64 encoded image
  * @param {string} mimeType - Image MIME type
  * @param {Object} bbox - { x, y, width, height } in normalized coordinates (0-1)
  * @returns {Promise<{base64, mimeType}>} - Cropped image
  */
 async function cropToBoard(base64Image, mimeType, bbox) {
-  // In a real implementation, you'd decode, crop with sharp/canvas, re-encode
-  // For now, return the original image with a note
-  // This would be replaced with actual image processing
-  return {
-    base64: base64Image,
-    mimeType,
-    cropped: !!bbox,
-    bbox,
-    note: 'Crop not implemented — install sharp and implement decode/crop/encode',
-  };
+  if (!bbox) {
+    return {
+      base64: base64Image,
+      mimeType,
+      cropped: false,
+      bbox: null,
+      note: 'No bounding box provided',
+    };
+  }
+
+  try {
+    // Decode base64 to buffer
+    const inputBuffer = Buffer.from(base64Image, 'base64');
+
+    // Get image metadata to calculate pixel coordinates
+    const metadata = await sharp(inputBuffer).metadata();
+    const { width: imgWidth, height: imgHeight } = metadata;
+
+    if (!imgWidth || !imgHeight) {
+      throw new Error('Could not determine image dimensions');
+    }
+
+    // Convert normalized coordinates (0-1) to pixel coordinates
+    const left = Math.round(bbox.x * imgWidth);
+    const top = Math.round(bbox.y * imgHeight);
+    const width = Math.round(bbox.width * imgWidth);
+    const height = Math.round(bbox.height * imgHeight);
+
+    // Ensure crop region is within image bounds
+    const cropLeft = Math.max(0, Math.min(left, imgWidth - 1));
+    const cropTop = Math.max(0, Math.min(top, imgHeight - 1));
+    const cropWidth = Math.max(1, Math.min(width, imgWidth - cropLeft));
+    const cropHeight = Math.max(1, Math.min(height, imgHeight - cropTop));
+
+    // Crop the image
+    const croppedBuffer = await sharp(inputBuffer)
+      .extract({ left: cropLeft, top: cropTop, width: cropWidth, height: cropHeight })
+      .toBuffer();
+
+    // Encode back to base64
+    const croppedBase64 = croppedBuffer.toString('base64');
+
+    return {
+      base64: croppedBase64,
+      mimeType,
+      cropped: true,
+      bbox: { x: bbox.x, y: bbox.y, width: bbox.width, height: bbox.height },
+      cropPixels: { left: cropLeft, top: cropTop, width: cropWidth, height: cropHeight },
+      originalDimensions: { width: imgWidth, height: imgHeight },
+    };
+  } catch (err) {
+    console.error(`[boardcrop] Crop failed: ${err.message}, returning original`);
+    return {
+      base64: base64Image,
+      mimeType,
+      cropped: false,
+      bbox,
+      error: err.message,
+    };
+  }
 }
 
 /**
