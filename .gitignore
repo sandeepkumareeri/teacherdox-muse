@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Evaluation test data (contains base64 images/audio - do not commit real data)
+eval/data/*.json
+!eval/data/README.md
+!eval/data/TEMPLATE.json
+
+# Evaluation results
+eval/results/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo

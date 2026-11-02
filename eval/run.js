@@ -38,18 +38,59 @@ const { transcribeAudio } = require('../muse.js');
  * @property {string} expected.carryForward
  */
 
-// Sample test cases (replace with real consented data)
-const TEST_CASES = [
+// ──────────────────────────────────────────────────────────────────────────────
+// Test Data Loading
+// ──────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Load test cases from JSON files in eval/data/ directory.
+ * Each file should be a valid TestCase object.
+ * This keeps base64 data out of the main eval script.
+ */
+function loadTestCases() {
+  const dataDir = path.join(__dirname, 'data');
+  if (!fs.existsSync(dataDir)) {
+    console.warn('[eval] No eval/data/ directory found. Create it and add test case JSON files.');
+    return [];
+  }
+
+  const files = fs.readdirSync(dataDir).filter(f => f.endsWith('.json'));
+  const testCases = [];
+
+  for (const file of files) {
+    try {
+      const content = fs.readFileSync(path.join(dataDir, file), 'utf8');
+      const testCase = JSON.parse(content);
+      // Validate required fields
+      if (!testCase.id || !testCase.type || !testCase.expected) {
+        console.warn(`[eval] Skipping ${file}: missing required fields (id, type, expected)`);
+        continue;
+      }
+      testCases.push(testCase);
+    } catch (err) {
+      console.warn(`[eval] Failed to load ${file}: ${err.message}`);
+    }
+  }
+
+  console.log(`[eval] Loaded ${testCases.length} test cases from ${dataDir}`);
+  return testCases;
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Sample test cases (inline for reference - real data should go in eval/data/)
+// ──────────────────────────────────────────────────────────────────────────────
+
+const SAMPLE_TEST_CASES = [
   {
     id: 'tc-001',
     type: 'photo',
     language: 'en',
-    base64Image: '', // Fill with real base64
+    base64Image: '', // Fill with real base64 or use eval/data/tc-001.json
     imageMimeType: 'image/jpeg',
     expected: {
       topic: 'Photosynthesis',
-      summary: 'Explained light-dependent reactions',
-      method: 'Lecture + diagram',
+      summary: 'Explained light-dependent reactions with diagram on board. Students identified chlorophyll role.',
+      method: 'Lecture + diagram + Q&A',
       attendance: '42/45',
       homework: 'Questions 1-5 page 120',
       carryForward: 'Calvin cycle tomorrow',
@@ -59,7 +100,7 @@ const TEST_CASES = [
     id: 'tc-002',
     type: 'voice',
     language: 'ml',
-    base64Audio: '', // Fill with real base64
+    base64Audio: '', // Fill with real base64 or use eval/data/tc-002.json
     audioMimeType: 'audio/ogg',
     expected: {
       topic: 'കേരള ചരിത്രം',
@@ -67,11 +108,47 @@ const TEST_CASES = [
       method: 'ചർച്ച + നോട്ട്',
       attendance: '38/40',
       homework: 'പേജ് 45 ചോദ്യങ്ങൾ',
-      carryForward: 'ഭരണഘടനchaffിന്റെ ഭാഗങ്ങൾ',
+      carryForward: 'ഭരണഘടനയുടെ ഭാഗങ്ങൾ',
     },
   },
-  // Add 30-50 real test cases here
+  {
+    id: 'tc-003',
+    type: 'photo+voice',
+    language: 'hi',
+    base64Image: '',
+    imageMimeType: 'image/jpeg',
+    base64Audio: '',
+    audioMimeType: 'audio/ogg',
+    expected: {
+      topic: 'प्रकाश संश्लेषण',
+      summary: 'प्रकाश-निर्भर प्रतिक्रियाओं को बोर्ड पर चित्र के साथ समझाया',
+      method: 'व्याख्यान + चित्र',
+      attendance: '40/44',
+      homework: 'प्रश्न 1-5 पृष्ठ 120',
+      carryForward: 'कैल्विन चक्र कल',
+    },
+  },
+  {
+    id: 'tc-004',
+    type: 'photo',
+    language: 'te',
+    base64Image: '',
+    imageMimeType: 'image/png',
+    expected: {
+      topic: 'విద్యుక్రియ',
+      summary: 'విద్యుత్{min}чивоపwirkungen చిత్రంతో వివరించబడ్డాయి',
+      method: 'వ్యాఖ్యానం + చిత్రం',
+      attendance: '39/42',
+      homework: 'ప్రశ్నలు 1-5 పేజీ 120',
+      carryForward: 'కాల్విన చక్రం రేపడు',
+    },
+  },
 ];
+
+// Combine loaded test cases with inline samples (inline used if no data dir)
+const TEST_CASES = [...loadTestCases(), ...SAMPLE_TEST_CASES.filter(s =>
+  !loadTestCases().some(l => l.id === s.id)
+)];
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Evaluation metrics
