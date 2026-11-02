@@ -9,7 +9,7 @@
  */
 
 const https = require('https');
-const { generate: museGenerate } = require('./muse.js');
+const { generate: museGenerate, _config: museConfig } = require('./muse.js');
 const sharp = require('sharp');
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -18,6 +18,7 @@ const sharp = require('sharp');
 
 const SAM_MODEL = process.env.META_MODEL_SAM || 'sam-3.1';
 const META_API_KEY = process.env.META_API_KEY;
+const META_API_BASE = museConfig().META_API_BASE || 'https://api.meta.ai/v1';
 
 // ──────────────────────────────────────────────────────────────────────────────
 // HTTP helper
@@ -30,7 +31,7 @@ function metaRequest(path, body, timeoutMs = 60000) {
       return;
     }
     const data = JSON.stringify(body);
-    const url = `https://api.meta.ai/v1${path}`;
+    const url = `${META_API_BASE}${path}`;
     const req = https.request(url, {
       method: 'POST',
       headers: {
