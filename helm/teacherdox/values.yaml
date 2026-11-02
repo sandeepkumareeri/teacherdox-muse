@@ -1,0 +1,264 @@
+# TeacherDox Helm Values
+# Override with: helm install teacherdox ./helm/teacherdox -f custom-values.yaml
+
+# ==================== GLOBAL ====================
+global:
+  # Tenant configuration
+  tenantId: "default"
+  tenantName: "TeacherDox Demo"
+  tenantSubdomain: "demo"
+  tenantDomain: "demo.teacherdox.example.com"
+
+  # Environment
+  environment: "production" # production, staging, development
+  timezone: "Asia/Kolkata"
+
+  # Image
+  image:
+    repository: teacherdox
+    tag: latest
+    pullPolicy: IfNotPresent
+
+  # Service
+  service:
+    type: ClusterIP
+    port: 3000
+    targetPort: 3000
+
+  # Resources
+  resources:
+    limits:
+      cpu: 2000m
+      memory: 2Gi
+    requests:
+      cpu: 500m
+      memory: 512Mi
+
+# ==================== APPLICATION ====================
+app:
+  replicaCount: 2
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+
+  # Node selector for multi-tenant isolation
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+  # Environment variables
+  env:
+    # Core
+    NODE_ENV: "production"
+    TZ: "Asia/Kolkata"
+    PORT: "3000"
+
+    # Database (references secrets)
+    DB_HOST: "teacherdox-postgresql"
+    DB_PORT: "5432"
+    DB_NAME: "teacherdox"
+    DB_SSL: "false"
+
+    # Redis
+    REDIS_HOST: "teacherdox-redis"
+    REDIS_PORT: "6379"
+
+    # Multi-tenancy
+    TENANT_CONFIG_PATH: "/app/tenancy/config"
+    DEFAULT_TENANT: "default"
+
+    # Meta AI
+    META_API_BASE: "https://api.meta.ai/v1"
+    AI_BACKEND: "gemini"
+    META_MODEL_CHAT: "meta-llama/Llama-3.3-70B-Instruct"
+    META_MODEL_VISION: "meta-llama/Llama-3.2-90B-Vision-Instruct"
+    META_MODEL_TRANSCRIBE: "muse-voice-transcribe"
+    META_MODEL_SAM: "sam-3.1"
+    META_DAILY_LIMIT: "500"
+    META_DAILY_LIMIT_PER_USER: "40"
+
+    # Gemini
+    GEMINI_DAILY_LIMIT: "500"
+    GEMINI_DAILY_LIMIT_PER_USER: "40"
+
+    # WhatsApp
+    WHATSAPP_PROVIDER: "aisensy"
+    ZERO_EFFORT_DAILY_CAP: "3"
+    DIGEST_TIME: "16:30"
+    AUTO_SUBMIT_TIME: "20:00"
+
+    # Observability
+    LOG_LEVEL: "info"
+    OTEL_SERVICE_NAME: "teacherdox"
+
+  # Secrets (populated from Kubernetes secrets)
+  envFromSecrets:
+    - name: teacherdox-secrets
+      prefix: ""
+
+  # ConfigMap for tenant configs
+  configMap:
+    enabled: true
+    name: teacherdox-tenant-configs
+    mountPath: /app/tenancy/config
+
+  # Volume mounts
+  volumeMounts:
+    - name: tenant-configs
+      mountPath: /app/tenancy/config
+      readOnly: true
+
+  # Liveness/Readiness probes
+  livenessProbe:
+    httpGet:
+      path: /health
+      port: 3000
+    initialDelaySeconds: 30
+    periodSeconds: 30
+    timeoutSeconds: 10
+    failureThreshold: 3
+
+  readinessProbe:
+    httpGet:
+      path: /ready
+      port: 3000
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+# ==================== POSTGRESQL ====================
+postgresql:
+  enabled: true
+  auth:
+    database: "teacherdox"
+    existingSecret: "teacherdox-postgresql-secret"
+    secretKeys:
+      adminPasswordKey: "postgres-password"
+      passwordKey: "password"
+  primary:
+    persistence:
+      enabled: true
+      size: 20Gi
+      storageClass: "fast-ssd"
+    resources:
+      limits:
+        cpu: 2000m
+        memory: 2Gi
+      requests:
+        cpu: 500m
+        memory: 512Mi
+    initdbScripts:
+      init.sql: |
+        CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+        CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+        CREATE EXTENSION IF NOT EXISTS "postgis";
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+
+# ==================== REDIS ====================
+redis:
+  enabled: true
+  auth:
+    enabled: true
+    existingSecret: "teacherdox-redis-secret"
+    secretKeys:
+      passwordKey: "redis-password"
+  master:
+    persistence:
+      enabled: true
+      size: 2Gi
+      storageClass: "fast-ssd"
+    resources:
+      limits:
+        cpu: 500m
+        memory: 512Mi
+      requests:
+        cpu: 100m
+        memory: 128Mi
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+
+# ==================== INGRESS ====================
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/rate-limit: "100"
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
+  hosts:
+    - host: "demo.teacherdox.example.com"
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: teacherdox-tls
+      hosts:
+        - "demo.teacherdox.example.com"
+
+# ==================== SERVICE MONITOR ====================
+serviceMonitor:
+  enabled: true
+  interval: 30s
+  scrapeTimeout: 10s
+
+# ==================== NETWORK POLICY ====================
+networkPolicy:
+  enabled: true
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: 3000
+
+# ==================== POD DISRUPTION BUDGET ====================
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+# ==================== HPA CUSTOM METRICS ====================
+customMetrics:
+  enabled: false
+  metrics: []
+
+# ==================== ADDITIONAL VOLUMES ====================
+additionalVolumes:
+  - name: geo-data
+    persistentVolumeClaim:
+      claimName: teacherdox-geo-pvc
+
+# ==================== INIT CONTAINERS ====================
+initContainers:
+  - name: wait-for-db
+    image: busybox:1.36
+    command: ['sh', '-c', 'until nc -z teacherdox-postgresql 5432; do echo waiting for db; sleep 2; done']
+  - name: wait-for-redis
+    image: busybox:1.36
+    command: ['sh', '-c', 'until nc -z teacherdox-redis 6379; do echo waiting for redis; sleep 2; done']
+  - name: run-migrations
+    image: "{{ .Values.global.image.repository }}:{{ .Values.global.image.tag }}"
+    command: ['node', 'tenancy/migrations/run.js']
+    envFrom:
+      - secretRef:
+          name: teacherdox-secrets
+
+# ==================== SIDE CAR ====================
+sidecars: []
+
+# ==================== TLS ====================
+tls:
+  enabled: true
+  secretName: teacherdox-tls
