@@ -1,0 +1,72 @@
+name: CI
+
+on:
+  push:
+    branches: [main, hackathon-improvements]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Test & Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run lint (basic syntax check)
+        run: node --check package.json && node --check muse.js && node --check boardcrop.js && node --check malayalam.js && node --check eval/run.js
+
+      - name: Load modules (smoke test)
+        run: |
+          node -e "require('./muse.js'); console.log('muse.js OK')"
+          node -e "require('./boardcrop.js'); console.log('boardcrop.js OK')"
+          node -e "require('./malayalam.js'); console.log('malayalam.js OK')"
+          node -e "require('./eval/run.js'); console.log('eval/run.js OK')"
+
+      - name: Run evaluation harness (dry run)
+        run: |
+          node -e "
+            const { computeAccuracy } = require('./eval/run.js');
+            const pred = { topic: 'Photosynthesis', summary: 'test', method: 'Lecture', attendance: '42/45', homework: 'Q1-5', carryForward: 'next' };
+            const exp = { topic: 'Photosynthesis', summary: 'test', method: 'Lecture', attendance: '42/45', homework: 'Q1-5', carryForward: 'next' };
+            const result = computeAccuracy(pred, exp);
+            console.log('Accuracy test:', result.overallAccuracy === 1 ? 'PASS' : 'FAIL');
+          "
+
+  # Optional: Run full eval if Meta API keys are available
+  eval:
+    name: Full Evaluation (requires secrets)
+    runs-on: ubuntu-latest
+    if: ${{ secrets.META_API_KEY != '' && secrets.GEMINI_API_KEY != '' }}
+    needs: test
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run evaluation
+        env:
+          META_API_KEY: ${{ secrets.META_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          AI_BACKEND: meta
+          META_AI_PHONES: eval
+        run: npm run eval
+        timeout-minutes: 10
