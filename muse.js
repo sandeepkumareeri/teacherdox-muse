@@ -18,7 +18,12 @@ const { generate: geminiGenerate } = require('./gemini.js'); // fallback
 const AI_BACKEND = process.env.AI_BACKEND || 'gemini'; // 'meta' | 'gemini'
 const META_API_KEY = process.env.META_API_KEY;
 
+// Meta API base URL — confirm at https://dev.meta.ai
+// Default: https://api.meta.ai/v1 (adjust if different)
+const META_API_BASE = process.env.META_API_BASE || 'https://api.meta.ai/v1';
+
 // Model IDs — from Meta's dev.meta.ai docs. Override via env if needed.
+// See: https://dev.meta.ai/models
 const META_MODEL_CHAT = process.env.META_MODEL_CHAT || 'meta-llama/Llama-3.3-70B-Instruct';
 const META_MODEL_VISION = process.env.META_MODEL_VISION || 'meta-llama/Llama-3.2-90B-Vision-Instruct';
 const META_MODEL_TRANSCRIBE = process.env.META_MODEL_TRANSCRIBE || 'muse-voice-transcribe';
@@ -78,7 +83,7 @@ function recordCall(user) {
 function metaRequest(path, body, timeoutMs = 60000) {
   return new Promise((resolve, reject) => {
     const data = JSON.stringify(body);
-    const url = `https://api.meta.ai/v1${path}`; // CONFIRM: check dev.meta.ai for exact endpoint
+    const url = `${META_API_BASE}${path}`;
     const req = https.request(url, {
       method: 'POST',
       headers: {
@@ -237,6 +242,7 @@ module.exports = {
   // Expose config for admin/debug
   _config: () => ({
     AI_BACKEND,
+    META_API_BASE,
     META_MODEL_CHAT,
     META_MODEL_VISION,
     META_MODEL_TRANSCRIBE,
