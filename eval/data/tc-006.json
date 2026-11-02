@@ -1,0 +1,17 @@
+{
+  "id": "tc-006",
+  "type": "voice",
+  "language": "en",
+  "base64Image": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+  "imageMimeType": "image/png",
+  "base64Audio": "T2dnUwACAAAAAAAAAAAA",
+  "audioMimeType": "audio/ogg",
+  "expected": {
+    "topic": "Photosynthesis",
+    "summary": "Explained light-dependent reactions with diagram on board. Students identified chlorophyll role.",
+    "method": "Lecture + diagram + Q&A",
+    "attendance": "42/45",
+    "homework": "Questions 1-5 page 120",
+    "carryForward": "Calvin cycle tomorrow"
+  }
+}
